@@ -1,0 +1,52 @@
+import groovy.xml.XmlSlurper
+
+plugins {
+    id 'fabric-loom' version '1.14.10'
+}
+
+def mc = project.minecraft_version
+
+def fapi = project.findProperty('fabric_version')
+if (!fapi) {
+    def xml = new XmlSlurper().parse('https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml')
+    def all = xml.versioning.versions.version.collect { it.text() }.findAll { it.endsWith('+' + mc) }
+    if (all.isEmpty()) {
+        throw new GradleException("Keine Fabric-API fuer ${mc} gefunden - fabric_version in gradle.properties eintragen")
+    }
+    fapi = all.last()
+}
+logger.lifecycle("Fabric API: ${fapi}")
+
+version = project.mod_version
+group = 'de.pbil'
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${mc}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fapi}"
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
